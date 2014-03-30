@@ -5,7 +5,9 @@ exports.serverSetting = {
 	//根目录
 	"rootPath" : "./assets",
 	//是否启用GZip
-	"gzip" : true
+	"gzip" : true,
+	//默认文件
+	"defaultFile" : "index.html"
 };
 
 //mimeType设置

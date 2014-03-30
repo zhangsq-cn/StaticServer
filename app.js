@@ -49,7 +49,7 @@ function pathHandle (request, response, realPath, pathname) {
 				} else {
 					var raw = fs.createReadStream(realPath);
 					var acceptEncoding = request.headers['accept-encoding'] || '';
-					var matched = ext.match(compress.match);
+					var matched = serverSetting.gzip ? ext.match(compress.match) : null;
 
 					//判断是否启用GZip
 					if (matched && acceptEncoding.match(/\bgzip\b/)) {
