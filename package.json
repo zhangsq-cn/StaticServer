@@ -1,0 +1,19 @@
+{
+  "name": "StaticServer",
+  "version": "1.1.0",
+  "description": "简单的静态文件服务器",
+  "main": "app.js",
+  "scripts": {
+    "test": "node app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stuarqi/StaticServer.git"
+  },
+  "author": "zhangsq",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/stuarqi/StaticServer/issues"
+  },
+  "homepage": "https://github.com/stuarqi/StaticServer"
+}
