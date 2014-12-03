@@ -1,0 +1,18 @@
+##StaticServer
+> 配置使用简单的静态文件服务器
+
+###环境需求
+> 需要Node.js环境，[下载地址](http://nodejs.org/download/)
+
+###下载服务
+> 点击链接下载不同的版本
+>> * [1.1.0](http://10.10.12.15/zhangsq/staticserver/repository/archive.zip?ref=1.1.0)
+>> * [1.2.0](http://10.10.12.15/zhangsq/staticserver/repository/archive.zip?ref=1.2.0)
+
+###设置
+> 修改config.js进行设置
+
+###运行
+```
+node app
+```
