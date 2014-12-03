@@ -3,6 +3,7 @@ var zlib = require('zlib');
 var url = require('url');
 var fs = require('fs');
 var path = require('path');
+var colors = require('colors');
 
 var config = require('./config'),
 	serverSetting = config.serverSetting,
@@ -13,6 +14,7 @@ var config = require('./config'),
 function pathHandle (request, response, realPath, pathname) {
 	fs.stat(realPath, function (err, stats) {
 		if (err) {
+			showLog('GET', 404, request.url);
 			//文件不存在时返回404
 			response.writeHead(404, 'Not Found', {'Content-Type' : mimeType['txt']});			
 			response.write('This request URL ' + pathname + ' was not found on this server');
@@ -43,6 +45,7 @@ function pathHandle (request, response, realPath, pathname) {
 				}
 
 				if (request.headers[ifModifiedSince] && lastModified == request.headers[ifModifiedSince]) {
+					showLog('GET', 304, request.url);
 					//如果文件未过期返回304
 					response.writeHead(304, 'Not Modified');
 					response.end();
@@ -62,10 +65,16 @@ function pathHandle (request, response, realPath, pathname) {
 						response.writeHead(200, 'OK');
 						raw.pipe(response);
 					}
+					showLog('GET', 200, request.url);
 				}
 			}
 		}
 	});
+}
+
+function showLog(method, statCode, url) {
+	//console.log([method, statCode, url].join(' '));
+	console.log(method + ' ' + statCode.toString()[statCode === 404 ? 'red' : (statCode === 304 ? 'yellow' : 'green')] + ' ' + url);
 }
 
 var server = http.createServer(function (request, response) {
@@ -78,6 +87,7 @@ var server = http.createServer(function (request, response) {
 
 	fs.exists(realPath, function (exists) {
 		if (!exists) {
+			showLog('GET', 404, request.url);
 			response.writeHead(404, {'Content-Type' : 'text/plain'});
 			response.write('This request URL ' + pathname + ' was not found on this server.');
 			response.end();
