@@ -82,7 +82,9 @@ var server = http.createServer(function (request, response) {
 	if (pathname.slice(-1) === '/') {
 		pathname = pathname + serverSetting.defaultFile;
 	}
-	var realPath = path.join(serverSetting.rootPath, path.normalize(pathname.replace(/\.\./g, '')));
+	var realPath = pathname === '/favicon.ico' ?
+		'./favicon.ico' :
+		path.join(serverSetting.rootPath, path.normalize(pathname.replace(/\.\./g, '')));
 	
 
 	fs.exists(realPath, function (exists) {
