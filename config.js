@@ -7,7 +7,9 @@ exports.serverSetting = {
 	//是否启用GZip
 	"gzip" : true,
 	//默认文件
-	"defaultFile" : "index.html"
+	"defaultFile" : "index.html",
+	//目录浏览
+	"indexes" : false
 };
 
 //mimeType设置
