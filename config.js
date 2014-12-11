@@ -9,7 +9,7 @@ exports.serverSetting = {
 	//默认文件
 	"defaultFile" : "index.html",
 	//目录浏览
-	"indexes" : false
+	"indexes" : true
 };
 
 //mimeType设置
