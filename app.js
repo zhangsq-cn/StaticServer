@@ -16,58 +16,52 @@ function pathHandle (request, response, realPath, pathname) {
 		if (err) {
 			showLog('GET', 404, request.url);
 			//文件不存在时返回404
-			response.writeHead(404, 'Not Found', {'Content-Type' : mimeType['txt']});			
+			response.writeHead(404, 'Not Found', {'Content-Type': mimeType['txt']});
 			response.write('This request URL ' + pathname + ' was not found on this server');
 			response.end();
+			return;
+		}
+		//根据扩展名确定Content-Type
+		var ext = path.extname(realPath);
+		ext = ext ? ext.slice(1) : 'unknown';
+		var contentType = mimeType[ext] || 'text/plain';
+		response.setHeader('Content-Type', contentType);
+
+		//设置返回头中文件修改时间
+		var lastModified = stats.mtime.toUTCString();
+		var ifModifiedSince = 'If-Modified-Since'.toLowerCase();
+		response.setHeader('Last-Modified', lastModified);
+
+		if (ext.match(expires.fileMatch)) {
+			//返回头中设置过期时间
+			var date = new Date();
+			date.setTime(date.getTime() + expires.maxAge);
+			response.setHeader('Expires', date.toUTCString());
+			response.setHeader('Cache-Control', 'max-age=' + expires.maxAge);
+		}
+
+		if (request.headers[ifModifiedSince] && lastModified == request.headers[ifModifiedSince]) {
+			showLog('GET', 304, request.url);
+			//如果文件未过期返回304
+			response.writeHead(304, 'Not Modified');
+			response.end();
 		} else {
-			if (stats.isDirectory()) {
-				//如果路径是文件夹自动加上默认文件
-				realPath = path.join(realPath, '/', serverSetting.defaultFile);
-				pathHandle(realPath);
+			var raw = fs.createReadStream(realPath);
+			var acceptEncoding = request.headers['accept-encoding'] || '';
+			var matched = serverSetting.gzip ? ext.match(compress.match) : null;
+
+			//判断是否启用GZip
+			if (matched && acceptEncoding.match(/\bgzip\b/)) {
+				response.writeHead(200, 'OK', {'Content-Encoding' : 'gzip'});
+				raw.pipe(zlib.createGzip()).pipe(response);
+			} else if (matched && acceptEncoding.match(/\bdeflate\b/)) {
+				response.writeHead(200, 'OK', {'Content-Encoding' : 'deflate'});
+				raw.pipe(zlib.createDeflate()).pipe(response);
 			} else {
-				//根据扩展名确定Content-Type
-				var ext = path.extname(realPath);
-				ext = ext ? ext.slice(1) : 'unknown';
-				var contentType = mimeType[ext] || 'text/plain';
-				response.setHeader('Content-Type', contentType);
-
-				//设置返回头中文件修改时间
-				var lastModified = stats.mtime.toUTCString();
-				var ifModifiedSince = 'If-Modified-Since'.toLowerCase();
-				response.setHeader('Last-Modified', lastModified);
-
-				if (ext.match(expires.fileMatch)) {
-					//返回头中设置过期时间
-					var date = new Date();
-					date.setTime(date.getTime() + expires.maxAge);
-					response.setHeader('Expires', date.toUTCString());
-					response.setHeader('Cache-Control', 'max-age=' + expires.maxAge);
-				}
-
-				if (request.headers[ifModifiedSince] && lastModified == request.headers[ifModifiedSince]) {
-					showLog('GET', 304, request.url);
-					//如果文件未过期返回304
-					response.writeHead(304, 'Not Modified');
-					response.end();
-				} else {
-					var raw = fs.createReadStream(realPath);
-					var acceptEncoding = request.headers['accept-encoding'] || '';
-					var matched = serverSetting.gzip ? ext.match(compress.match) : null;
-
-					//判断是否启用GZip
-					if (matched && acceptEncoding.match(/\bgzip\b/)) {
-						response.writeHead(200, 'OK', {'Content-Encoding' : 'gzip'});
-						raw.pipe(zlib.createGzip()).pipe(response);
-					} else if (matched && acceptEncoding.match(/\bdeflate\b/)) {
-						response.writeHead(200, 'OK', {'Content-Encoding' : 'deflate'});
-						raw.pipe(zlib.createDeflate()).pipe(response);
-					} else {
-						response.writeHead(200, 'OK');
-						raw.pipe(response);
-					}
-					showLog('GET', 200, request.url);
-				}
+				response.writeHead(200, 'OK');
+				raw.pipe(response);
 			}
+			showLog('GET', 200, request.url);
 		}
 	});
 }
@@ -77,27 +71,72 @@ function showLog(method, statCode, url) {
 	console.log(method + ' ' + statCode.toString()[statCode === 404 ? 'red' : (statCode === 304 ? 'yellow' : 'green')] + ' ' + url);
 }
 
-var server = http.createServer(function (request, response) {
-	var pathname = url.parse(request.url).pathname;
-	if (pathname.slice(-1) === '/') {
-		pathname = pathname + serverSetting.defaultFile;
-	}
-	var realPath = pathname === '/favicon.ico' ?
-		'./favicon.ico' :
-		path.join(serverSetting.rootPath, path.normalize(pathname.replace(/\.\./g, '')));
-	
-
-	fs.exists(realPath, function (exists) {
-		if (!exists) {
+function dirHandle(request, response, realPath, pathname) {
+	var filePath, fileStat,
+		html, subPath;
+	fs.readdir(realPath, function (err, files) {
+		if (err) {
 			showLog('GET', 404, request.url);
-			response.writeHead(404, {'Content-Type' : 'text/plain'});
-			response.write('This request URL ' + pathname + ' was not found on this server.');
+			//文件不存在时返回404
+			response.writeHead(404, 'Not Found', {'Content-Type' : mimeType['txt']});
+			response.write('This request URL ' + pathname + ' was not found on this server');
 			response.end();
+			return;
+		}
+		html = '<html><head><title>' + pathname + '</title></head><body><h1>' + pathname + '</h1><ul>';
+		html += pathname === '/' ? '' : '<li><a href="' + pathname.replace(/[^\/]+\/?$/, '') + '">..</a>';
+		files.forEach(function (file) {
+			filePath = path.join(realPath, file);
+			fileStat = fs.statSync(filePath);
+			subPath = fileStat.isDirectory() ? file + '/' : file;
+			html += '<li><a href="' + path.join(pathname, subPath) + '">' + subPath + '</a></li>';
+		});
+		html += '</ul></body></html>';
+
+		showLog('GET', 200, request.url);
+		response.writeHead(200, {'Content-Type' : mimeType['html']});
+		response.write(html);
+		response.end();
+	});
+}
+
+var server = http.createServer(function (request, response) {
+	var pathname = url.parse(request.url).pathname,
+		realPath = path.join(serverSetting.rootPath, pathname);
+
+	fs.stat(realPath, function (err, stats) {
+		if (err) {
+			if (pathname === '/favicon.ico') {
+				realPath = './favicon.ico';
+				pathHandle(request, response, realPath, pathname);
+			} else {
+				showLog('GET', 404, request.url);
+				//文件不存在时返回404
+				response.writeHead(404, 'Not Found', {'Content-Type': mimeType['txt']});
+				response.write('This request URL ' + pathname + ' was not found on this server');
+				response.end();
+			}
+			return;
+		}
+		if (stats.isDirectory()) {
+			var tmp = path.join(realPath, serverSetting.defaultFile);
+			fs.exists(tmp, function (exists) {
+				if (exists) {
+					realPath = path.join(realPath, serverSetting.defaultFile);
+					pathHandle(request, response, realPath, pathname);
+				} else {
+					if (serverSetting.indexes) {
+						dirHandle(request, response, realPath, pathname);
+					} else {
+						showLog('GET', 404, request.url);
+						//文件不存在时返回404
+						response.writeHead(404, 'Not Found', {'Content-Type': mimeType['txt']});
+						response.write('This request URL ' + pathname + ' was not found on this server');
+						response.end();
+					}
+				}
+			});
 		} else {
-			var ext = path.extname(realPath);
-			ext = ext ? ext.slice(1) : 'unknown';
-			response.setHeader('Content-Type', mimeType[ext] || 'unknown');
-			
 			pathHandle(request, response, realPath, pathname);
 		}
 	});
