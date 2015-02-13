@@ -9,13 +9,20 @@ var serverSetting = require('./config').serverSetting,
     dirs = serverSetting.directory,
     primary = serverSetting.primaryDirectory;
 
+var dirReg = /^\//;
+
+function getDirPath(str) {
+    return dirReg.test(str) ?
+        str : '/' + str;
+}
+
 var app = connect();
 // 为不同的虚拟目录添加中间件
 dirs.forEach(function (dir) {
-    app.use(dir.name, checkFile(dir));
+    app.use(getDirPath(dir.name), checkFile(dir));
 });
 // 主目录中间件
-app.use(primary.name, checkFile(primary));
+app.use(getDirPath(primary.name), checkFile(primary));
 // 读取文件信息中间件
 app.use(handleFile);
 // 日志中间件
