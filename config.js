@@ -1,15 +1,33 @@
 //服务器基本设置
 exports.serverSetting = {
 	//端口
-	"port" : 8000,
-	//根目录
-	"rootPath" : "./assets",
-	//是否启用GZip
-	"gzip" : true,
-	//默认文件
-	"defaultFile" : "index.html",
-	//目录浏览
-	"indexes" : true
+	"port" : 80,
+    "primaryDirectory" : {
+        "name" : "/",
+        // 真实路径
+        "path" : "./assets",
+        // 是否启用内容压缩
+        "zip" : true,
+        // 默认首页
+        "defaultFile" : "index.html",
+        // 是否允许目录浏览
+        "indexes" : true
+    },
+    //虚拟目录
+    "directory" : [
+        /*{
+            // 虚拟目录名称
+            "name" : "/assets",
+            // 真实路径
+            "path" : "./assets",
+            // 是否启用内容压缩
+            "zip" : true,
+            // 默认首页
+            "defaultFile" : "default.html",
+            // 是否允许目录浏览
+            "indexes" : true
+        }*/
+    ]
 };
 
 //mimeType设置
